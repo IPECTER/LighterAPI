@@ -1,0 +1,6 @@
+dependencies {
+    compileOnly project(':bukkit-common')
+    compileOnly 'io.papermc.paper:paper:1.17.1-R0.1-SNAPSHOT'
+}
+
+description = 'lightapi-craftbukkit-nms-v1_17_R1'

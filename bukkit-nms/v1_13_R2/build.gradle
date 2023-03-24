@@ -1,0 +1,6 @@
+dependencies {
+    compileOnly project(':bukkit-common')
+    compileOnly 'org.spigotmc:spigot:1.13.2-R0.1-SNAPSHOT'
+}
+
+description = 'lightapi-craftbukkit-nms-v1_13_R2'

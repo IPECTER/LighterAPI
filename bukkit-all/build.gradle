@@ -1,0 +1,57 @@
+import java.text.SimpleDateFormat
+
+plugins {
+    id 'java-library'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+dependencies {
+    implementation project(':common')
+    implementation project(':bukkit-common')
+    implementation project(':bukkit-backward-support')
+    implementation project(':lightapi-craftbukkit-nms-v1_13_R2')
+    implementation project(':lightapi-craftbukkit-nms-v1_14_R1')
+    implementation project(':lightapi-craftbukkit-nms-v1_15_R1')
+    implementation project(':lightapi-craftbukkit-nms-v1_16_R1')
+    implementation project(':lightapi-craftbukkit-nms-v1_16_R2')
+    implementation project(':lightapi-craftbukkit-nms-v1_16_R3')
+    implementation project(':lightapi-craftbukkit-nms-v1_17_R1')
+    implementation project(path: ':lightapi-craftbukkit-nms-v1_18_R1', configuration: 'reobf')
+    implementation project(path: ':lightapi-craftbukkit-nms-v1_18_R2', configuration: 'reobf')
+    implementation project(path: ':lightapi-craftbukkit-nms-v1_19_R1', configuration: 'reobf')
+    implementation project(path: ':lightapi-craftbukkit-nms-v1_19_R2', configuration: 'reobf')
+    implementation project(path: ':lightapi-craftbukkit-nms-v1_19_R3', configuration: 'reobf')
+}
+
+description = 'bukkit-all'
+
+tasks.withType(Jar) {
+    destinationDirectory = file("$rootDir/bukkit-all")
+}
+
+artifacts {
+    archives shadowJar
+}
+
+def pluginVersion = rootProject.ext.pluginVersion
+def SERVER_API = 'Bukkit'
+
+shadowJar {
+    relocate("org.bstats", "ru.beykerykt.minecraft.lightapi.bukkit.bstats")
+
+    version = pluginVersion
+    archiveBaseName = 'LightAPI-Bukkit'
+    archiveClassifier.set('SNAPSHOT')
+    manifest {
+        attributes(
+                'Built-By': System.properties['user.name'],
+                'Version': pluginVersion,
+                'Build-Timestamp': new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss.SSSZ").format(new Date()),
+                'Created-By': "Gradle ${gradle.gradleVersion}",
+                'Build-Jdk': "${System.properties['java.version']} " +
+                        "(${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+                'Build-OS': "${System.properties['os.name']} ${System.properties['os.arch']} " +
+                        "${System.properties['os.version']}"
+        )
+    }
+}

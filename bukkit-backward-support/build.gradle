@@ -1,0 +1,7 @@
+dependencies {
+    compileOnly project(':bukkit-common')
+    compileOnly project(':common')
+    compileOnly 'org.spigotmc:spigot-api:1.14.4-R0.1-SNAPSHOT'
+}
+
+description = 'bukkit-backward-support'
