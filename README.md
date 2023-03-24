@@ -1,4 +1,4 @@
-# LightAPI
+# LightrAPI - LightAPI Fork
 
 Bukkit Library for create invisible light source
 
