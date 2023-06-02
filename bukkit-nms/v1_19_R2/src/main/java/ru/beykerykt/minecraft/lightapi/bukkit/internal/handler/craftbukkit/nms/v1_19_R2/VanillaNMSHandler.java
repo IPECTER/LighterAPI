@@ -61,7 +61,7 @@ import java.util.stream.Stream;
 public class VanillaNMSHandler extends BaseNMSHandler {
 
     protected Field lightEngine_ThreadedMailbox;
-    protected boolean isPaperRCS;
+    protected boolean isPaperRCS = false;
     private Field threadedMailbox_State;
     private Method threadedMailbox_DoLoopStep;
     private Field lightEngineLayer_d;
@@ -155,8 +155,7 @@ public class VanillaNMSHandler extends BaseNMSHandler {
         try {
             Class.forName("io.papermc.paper.chunk.system.ChunkSystem");
             isPaperRCS = true;
-        } catch (ClassNotFoundException e) {
-            isPaperRCS = false;
+        } catch (ClassNotFoundException ignored) {
         }
         try {
             threadedMailbox_DoLoopStep = ProcessorMailbox.class.getDeclaredMethod("i"); // registerForExecution

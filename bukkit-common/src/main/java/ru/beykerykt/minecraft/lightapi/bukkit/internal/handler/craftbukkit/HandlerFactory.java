@@ -49,9 +49,16 @@ public class HandlerFactory implements IHandlerFactory {
                 try {
                     Class.forName("io.papermc.paper.chunk.system.ChunkSystem");
                     getPlatformImpl().debug("Found Class" + pkg + ", Start using Starlight with RewriteChunkSystem.");
-                } catch (ClassNotFoundException e) {
-                    getPlatformImpl().debug("Found Class" + pkg + ", Start using Starlight.");
+                    return true;
+                } catch (ClassNotFoundException ignored) {
                 }
+                try {
+                    Class.forName("ca.spottedleaf.starlight.Starlight");
+                    getPlatformImpl().debug("Found Class" + pkg + ", Start using Starlight with Mod.");
+                    return true;
+                } catch (ClassNotFoundException ignored) {
+                }
+                getPlatformImpl().debug("Found Class" + pkg + ", Start using Starlight.");
                 return true;
             } catch (ClassNotFoundException e) {
                 getPlatformImpl().debug("Class " + pkg + " not found");

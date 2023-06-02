@@ -36,6 +36,7 @@ import net.minecraft.world.level.ChunkCoordIntPair;
 import net.minecraft.world.level.EnumSkyBlock;
 import net.minecraft.world.level.block.state.BlockBase;
 import net.minecraft.world.level.chunk.ILightAccess;
+import net.minecraft.world.level.lighting.LightEngine;
 import net.minecraft.world.level.lighting.LightEngineLayerEventListener;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
@@ -75,6 +76,7 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
     private Method starEngine_updateVisible;
     private Method starEngine_setupCaches;
     private Method starEngine_destroyCaches;
+    private boolean isStarLightMod = false;
 
     private void scheduleChunkLight(StarLightInterface starLightInterface, ChunkCoordIntPair chunkCoordIntPair,
                                     Runnable runnable) {
@@ -164,6 +166,11 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
     public void onInitialization(BukkitPlatformImpl impl) throws Exception {
         super.onInitialization(impl);
         try {
+            Class.forName("ca.spottedleaf.starlight.Starlight");
+            isStarLightMod = true;
+        } catch (ClassNotFoundException ignored) {
+        }
+        try {
             starEngine_setLightLevel = StarLightEngine.class.getDeclaredMethod("setLightLevel", int.class, int.class,
                     int.class, int.class);
             starEngine_setLightLevel.setAccessible(true);
@@ -186,8 +193,11 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
             starEngine_setupCaches.setAccessible(true);
             starEngine_destroyCaches = StarLightEngine.class.getDeclaredMethod("destroyCaches");
             starEngine_destroyCaches.setAccessible(true);
-            starInterface = LightEngineThreaded.class.getDeclaredField("theLightEngine");
-            starInterface.setAccessible(true);
+            if (isStarLightMod) {
+                starInterface = LightEngine.class.getDeclaredField("lightEngine");
+            } else {
+                starInterface = LightEngineThreaded.class.getDeclaredField("theLightEngine");
+            }
             starInterface_getBlockLightEngine = StarLightInterface.class.getDeclaredMethod("getBlockLightEngine");
             starInterface_getBlockLightEngine.setAccessible(true);
             starInterface_getSkyLightEngine = StarLightInterface.class.getDeclaredMethod("getSkyLightEngine");

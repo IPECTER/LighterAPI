@@ -38,6 +38,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.chunk.LightChunkGetter;
 import net.minecraft.world.level.lighting.LayerLightEventListener;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_19_R1.CraftWorld;
 import ru.beykerykt.minecraft.lightapi.bukkit.internal.BukkitPlatformImpl;
@@ -65,6 +66,7 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
     private final Map<ChunkPos, Set<LightPos>> skyQueueMap = new ConcurrentHashMap<>();
     // StarLightInterface
     private Field starInterface;
+    private Field starInterface_lightQueue;
     private Field starInterface_coordinateOffset;
     private Method starInterface_getBlockLightEngine;
     private Method starInterface_getSkyLightEngine;
@@ -77,6 +79,7 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
     private Method starEngine_updateVisible;
     private Method starEngine_setupCaches;
     private Method starEngine_destroyCaches;
+    private boolean isStarLightMod = false;
 
     private void scheduleChunkLight(StarLightInterface starLightInterface, ChunkPos chunkCoordIntPair,
                                     Runnable runnable) {
@@ -92,61 +95,6 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
                                 ChunkPos chunkCoordIntPair, Set<LightPos> lightPoints) {
         int type = (sle instanceof BlockStarLightEngine) ? LightFlag.BLOCK_LIGHTING : LightFlag.SKY_LIGHTING;
         if (isPaperRCS) {
-            scheduleChunkLight(starLightInterface, chunkCoordIntPair, () -> {
-                try {
-                    int chunkX = chunkCoordIntPair.x;
-                    int chunkZ = chunkCoordIntPair.z;
-
-                    if (!worldServer.getChunkSource().isChunkLoaded(chunkX, chunkZ)) {
-                        return;
-                    }
-
-                    // blocksChangedInChunk -- start
-                    // setup cache
-                    starEngine_setupCaches.invoke(sle, worldServer.getChunkSource(), chunkX * 16 + 7, 128, chunkZ * 16 + 7,
-                            true, true);
-                    try {
-                        // propagateBlockChanges -- start
-                        Iterator<LightPos> it = lightPoints.iterator();
-                        while (it.hasNext()) {
-                            try {
-                                LightPos lightPos = it.next();
-                                BlockPos blockPos = lightPos.blockPos;
-                                int lightLevel = lightPos.lightLevel;
-                                int currentLightLevel = getRawLightLevel(worldServer.getWorld(), blockPos.getX(),
-                                        blockPos.getY(), blockPos.getZ(), type);
-                                if (lightLevel <= currentLightLevel) {
-                                    // do nothing
-                                    continue;
-                                }
-                                int encodeOffset = starInterface_coordinateOffset.getInt(sle);
-                                Block.BlockStateBase blockData = worldServer.getBlockState(blockPos);
-                                starEngine_setLightLevel.invoke(sle, blockPos.getX(), blockPos.getY(), blockPos.getZ(),
-                                        lightLevel);
-                                if (lightLevel != 0) {
-                                    starEngine_appendToIncreaseQueue.invoke(sle,
-                                            ((blockPos.getX() + (blockPos.getZ() << 6) + (blockPos.getY() << (6 + 6))
-                                                    + encodeOffset) & ((1L << (6 + 6 + 16)) - 1)) | (lightLevel & 0xFL) << (
-                                                    6 + 6 + 16) | (((long) ALL_DIRECTIONS_BITSET) << (6 + 6 + 16 + 4)) | (
-                                                    blockData.isConditionallyFullOpaque()
-                                                            ? FLAG_HAS_SIDED_TRANSPARENT_BLOCKS : 0));
-                                }
-                            } finally {
-                                it.remove();
-                            }
-                        }
-                        starEngine_performLightIncrease.invoke(sle, worldServer.getChunkSource());
-                        // propagateBlockChanges -- end
-                        starEngine_updateVisible.invoke(sle, worldServer.getChunkSource());
-                    } finally {
-                        starEngine_destroyCaches.invoke(sle);
-                    }
-                    // blocksChangedInChunk -- end
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            });
-        } else {
             scheduleChunkLight(starLightInterface, chunkCoordIntPair, () -> {
                 try {
                     int chunkX = chunkCoordIntPair.x;
@@ -203,6 +151,61 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
                 }
                 return true;
             });
+        } else {
+            scheduleChunkLight(starLightInterface, chunkCoordIntPair, () -> {
+                try {
+                    int chunkX = chunkCoordIntPair.x;
+                    int chunkZ = chunkCoordIntPair.z;
+
+                    if (!worldServer.getChunkSource().isChunkLoaded(chunkX, chunkZ)) {
+                        return;
+                    }
+
+                    // blocksChangedInChunk -- start
+                    // setup cache
+                    starEngine_setupCaches.invoke(sle, worldServer.getChunkSource(), chunkX * 16 + 7, 128, chunkZ * 16 + 7,
+                            true, true);
+                    try {
+                        // propagateBlockChanges -- start
+                        Iterator<LightPos> it = lightPoints.iterator();
+                        while (it.hasNext()) {
+                            try {
+                                LightPos lightPos = it.next();
+                                BlockPos blockPos = lightPos.blockPos;
+                                int lightLevel = lightPos.lightLevel;
+                                int currentLightLevel = getRawLightLevel(worldServer.getWorld(), blockPos.getX(),
+                                        blockPos.getY(), blockPos.getZ(), type);
+                                if (lightLevel <= currentLightLevel) {
+                                    // do nothing
+                                    continue;
+                                }
+                                int encodeOffset = starInterface_coordinateOffset.getInt(sle);
+                                Block.BlockStateBase blockData = worldServer.getBlockState(blockPos);
+                                starEngine_setLightLevel.invoke(sle, blockPos.getX(), blockPos.getY(), blockPos.getZ(),
+                                        lightLevel);
+                                if (lightLevel != 0) {
+                                    starEngine_appendToIncreaseQueue.invoke(sle,
+                                            ((blockPos.getX() + (blockPos.getZ() << 6) + (blockPos.getY() << (6 + 6))
+                                                    + encodeOffset) & ((1L << (6 + 6 + 16)) - 1)) | (lightLevel & 0xFL) << (
+                                                    6 + 6 + 16) | (((long) ALL_DIRECTIONS_BITSET) << (6 + 6 + 16 + 4)) | (
+                                                    blockData.isConditionallyFullOpaque()
+                                                            ? FLAG_HAS_SIDED_TRANSPARENT_BLOCKS : 0));
+                                }
+                            } finally {
+                                it.remove();
+                            }
+                        }
+                        starEngine_performLightIncrease.invoke(sle, worldServer.getChunkSource());
+                        // propagateBlockChanges -- end
+                        starEngine_updateVisible.invoke(sle, worldServer.getChunkSource());
+                    } finally {
+                        starEngine_destroyCaches.invoke(sle);
+                    }
+                    // blocksChangedInChunk -- end
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            });
         }
     }
 
@@ -230,6 +233,12 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
     public void onInitialization(BukkitPlatformImpl impl) throws Exception {
         super.onInitialization(impl);
         try {
+            Class.forName("ca.spottedleaf.starlight.Starlight");
+            isStarLightMod = true;
+        } catch (ClassNotFoundException ignored) {
+        }
+
+        try {
             starEngine_setLightLevel = StarLightEngine.class.getDeclaredMethod("setLightLevel", int.class, int.class,
                     int.class, int.class);
             starEngine_setLightLevel.setAccessible(true);
@@ -252,7 +261,11 @@ public class StarlightNMSHandler extends VanillaNMSHandler {
             starEngine_setupCaches.setAccessible(true);
             starEngine_destroyCaches = StarLightEngine.class.getDeclaredMethod("destroyCaches");
             starEngine_destroyCaches.setAccessible(true);
-            starInterface = ThreadedLevelLightEngine.class.getDeclaredField("theLightEngine");
+            if (isStarLightMod) {
+                starInterface = LevelLightEngine.class.getDeclaredField("lightEngine");
+            } else {
+                starInterface = ThreadedLevelLightEngine.class.getDeclaredField("theLightEngine");
+            }
             starInterface.setAccessible(true);
             starInterface_getBlockLightEngine = StarLightInterface.class.getDeclaredMethod("getBlockLightEngine");
             starInterface_getBlockLightEngine.setAccessible(true);

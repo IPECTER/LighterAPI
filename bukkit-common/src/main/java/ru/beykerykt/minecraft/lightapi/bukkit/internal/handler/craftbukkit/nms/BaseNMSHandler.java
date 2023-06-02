@@ -32,7 +32,7 @@ public abstract class BaseNMSHandler implements IHandler {
 
     private BukkitPlatformImpl mPlatformImpl;
 
-    protected static RuntimeException toRuntimeException(Throwable e) {
+    protected RuntimeException toRuntimeException(Throwable e) {
         if (e instanceof RuntimeException) {
             return (RuntimeException) e;
         }
